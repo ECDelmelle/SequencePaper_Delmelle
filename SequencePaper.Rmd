@@ -20,16 +20,18 @@ header-includes:
   Tracking and understanding neighborhood changes has been a central topic of urban studies and a fundamental concern for planning practitioners
   [@Galster2001; @Landis2016; @ChappleZuk2016]. Neighborhood change can be comprehended according to various dimensions, from housing stock or built environment changes to residents' demographic and socioeconomic composition [@Delmelle2022].  Thus, the study of neighborhood change involves analyzing multiple attribute dimensions through time for spatially situated units. Recent scholarship has progressed in the analytical strategies used to study neighborhood trajectories, introducing new methods for visualizing and mapping longitudinal pathways of change for multiple dimensions [@Delmelle2022].
 
-  In this article, we demonstrate one such technique, sequence analysis, to explore decennial neighborhood racial and ethnic changes in New York City from 1980-2020. The United States’ demographic profile has become increasingly diverse in the past several decades, driven by immigration and growing natural birth rates of the non-White population [@Frey2022]. Analyses following the release of the 2010 decennial census showed that increasing national diversity resulted in differing neighborhood trajectories, largely contingent on the broader metropolitan context [@Terbeck2023; @Wright2014].
+  In this article, we demonstrate one such technique, sequence analysis, to explore decennial neighborhood racial and ethnic changes in New York City from 1980-2020. The United States’ demographic profile has become increasingly diverse in the past several decades, driven by immigration and growing natural birth rates of the non-White population [@frey2022new]. Analyses following the release of the 2010 decennial census showed that increasing national diversity resulted in differing neighborhood trajectories, largely contingent on the broader metropolitan context [@Terbeck2023; @Wright2014].
   
   Much of the empirical scholarship on neighborhood racial and ethnic changes has developed indices to categorize the makeup or diversity of racial and ethnic groups and then explored changes in a neighborhood’s diversity categorization over time. For example, a neighborhood might transition from ‘low diverse’ to ‘moderately diverse’ from one decade to the next [@farrell2011racial; @Wright2014]. Alternately, another set of techniques aims to describe the longitudinal sequences or trajectories that the racial and ethnic groups in a neighborhood have followed. Two methods have been used for this purpose: statistical curve fitting and sequence analysis. With curve-fitting models like growth mixture models or latent growth models, mathematical functions fit each racial and ethnic group under study that summarize the predominant trends [@Zwiers2018; @HippKim2023]. With sequence analysis, neighborhoods are first grouped into similar clusters according to their racial and ethnic makeup using an unsupervised clustering algorithm like k-means. This is done for all neighborhoods and all time stamps. Then, each neighborhood is assigned a categorical cluster over time, and finally, the sequences of these clusters are grouped using a sequence alignment technique [@Delmelle2016; @GonzalezLeonardo2023]. Both approaches aim to develop a typology of the predominant longitudinal pathways of change for multiple variables at once.
 
   In this article, we explore trajectories of neighborhood racial and ethnic changes in the largest and one of the most diverse cities in the United States, New York City, using longitudinal census data up to the latest 2020 decennial release. This notebook showcases a workflow that introduces sequence analysis to the study of multidimensional neighborhood changes. We begin by processing the raw longitudinal census data, then performing a k-means classification, and finally classifying sequences clusters. 
   
 ### Computational environment 
-  The main libraries used for this analysis include `dplyr` for processing tabular census data, `sf` for mapping the resulting clusters, `cluster` for performing the `k-means` cluster analysis. We also use `factoextra` and `pheatmap` for visualing and evaluating the clustering results. Finally, to perform the sequence analysis, we use `TraMineR` [@Gabadinho2011]. This is a popular R package for performing sequence analysis for a host of social science applications, including analyses of neighborhood change. 
+  The main libraries used for this analysis include `dplyr` for processing tabular census data, `sf` for mapping the resulting clusters, `cluster` for performing the `k-means` cluster analysis. We also use `factoextra` and `pheatmap` for visualing and evaluating the clustering results. Finally, to perform the sequence analysis, we use `TraMineR` [@Gabadinho2011]. This is a popular and continually updated R package for performing sequence analysis for a host of social science applications, including analyses of neighborhood change [@Delmelle2016; @delmelle2017differentiating; @patias2020scalable]. 
 
 ```{r loadlibraries, include = FALSE}
+# install.packages("tidyverse") # Install package if you have never used it before
+library(tidyverse) #for data manipulation
 # install.packages("cluster") # Install package if you have never used it before
 library(cluster) # For k-means and hierarchical cluster analysis
 # install.packages("dplyr") # Install package if you have never used it before
@@ -48,8 +50,10 @@ library(TraMineR) #For sequence clustering
 library(here) #for reading in data
 # install.packages("tidycensus") # Install package if you have never used it before
 library(tidycensus) #for reading in census tract data (shapefile)
-# install.packages("tidyverse") # Install package if you have never used it before
-library(tidyverse) #for data table pivoting
+# install.packages("knitr") # Install package if you have never used it before
+library(knitr) #for data table formatting
+# install.packages("gridExtra") # Install package if you have never used it before
+library(gridExtra) #for facet plots
 ```
 
 ### Data
@@ -58,7 +62,7 @@ library(tidyverse) #for data table pivoting
   We obtained the fullcount decennial data from LTDB from 1980-2020 from the website (https://s4.ad.brown.edu/projects/diversity/Researcher/LTBDDload/DataList.aspx). The census variables have been interpolated to 2010 tract boundaries. Because the coding of census race and ethnicity changes over time, we opted to begin in 1980 as 1970, the earliest dataset available, did not record a count of Latino or Hispanic residents. The raw data contains all census tracts throughout the United States. Finally, we also import a shapefile of 2010 census tracts
   
 ### Basic conceptual intuition 
-  Our analysis features two fundamental steps. The first is the *k*-means clustering of the census tracts to derive multidimensional classes of neighborhoods containing similar racial and ethnic compositions. Reibel and Regelson (2011) introduced the idea of using an unsupervised classification approach for studying neighborhood racial change as an alternative to the use of neighborhood diversity indices. The objective of the *k*-means algorithm is to group observations in such a way that maximizes the similarity of observations within groups or clusters while maximizing the dissimilarity between each cluster. In other words, the goal is to group neighborhoods so that those most similar to each other according to their racial and ethnic makeup are assigned to the same cluster and the clusters themselves are distinct from one another in terms of their makeup. With the *k*-means algorithm, the number of clusters, *k* must be determined *a priori*. To make this determination, it is customary to evaluate multiple solutions using various fit statistics in conjunction with domain and geographic knowledge of the data (Delmelle, 2015). It is also reccomended that input variables be normalized for data used in neighborhood classification research to avoid placing unequal emphasis on variables that may be on different measurement scales. However, in our case study, all of the racial and ethnic variables represent percentages of the population and so, this step is not performed in the case study. 
+  Our analysis features two fundamental steps. The first is the *k*-means clustering of the census tracts to derive multidimensional classes of neighborhoods containing similar racial and ethnic compositions. Reibel and Regelson (2011) introduced the idea of using an unsupervised classification approach for studying neighborhood racial change as an alternative to the use of neighborhood diversity indices. The objective of the *k*-means algorithm is to group observations in such a way that maximizes the similarity of observations within groups or clusters while maximizing the dissimilarity between each cluster. In other words, the goal is to group neighborhoods so that those most similar to each other according to their racial and ethnic makeup are assigned to the same cluster and the clusters themselves are distinct from one another in terms of their makeup. With the *k*-means algorithm, the number of clusters, *k* must be determined *a priori*. To make this determination, it is customary to evaluate multiple solutions using various fit statistics in conjunction with domain and geographic knowledge of the data [@delmelle2015five]. It is also reccomended that input variables be normalized for data used in neighborhood classification research to avoid placing unequal emphasis on variables that may be on different measurement scales. However, in our case study, all of the racial and ethnic variables represent percentages of the population and so, this step is not performed in the case study. 
   Our ultimate goal is to understand the major pathways of neighborhood change and so each neighborhood will be classified five times for 1980, 1990, 2000, 2010, and 2020 to establish its longitudinal sequence. To ensure that the clusters are temporally stable, we will perform the clustering for all years at once. New neighborhood typologies may emerge over time with this approach. In that case, only tracts from the later years would be assign to the new cluster.
   Like *k*-means, sequence analysis is an unsupervised classification technique that aims to cluster similar longitudinal sequences. To determine the similarity of the sequences, a key step in this analysis is to create the dissimilarity measure. There are various approaches that can be used to determine the similarity of categorical sequences. 
 
@@ -154,7 +158,7 @@ tract$TRTID10<- as.double(tract$TRTID10)
 ```
 
   We next prepare the data for the k-means clustering. This involves pivoting the data frame so that each census tract is represented with five distinct rows, once for each decennial value. To do so, we pivot from a wide to a long format and select out just the four race and ethnicity values to be used in the clustering.
-```{r kmeans}
+```{r kmeans, warning=FALSE, message=FALSE}
 # Convert the data frame from wide to long format
 census_long <- census_nyc %>%
   pivot_longer(cols = starts_with("per"), 
@@ -178,7 +182,7 @@ data_for_clustering <- census_long %>%
 
   As explained above, the *k* means clustering procedure requires that the number of clusters, *k* be specified *a priori*. There are fit statistics that attempt to determine the optimal number of clusters, considering the similarity of observations within each cluster and the distinctiveness of the clusters from each other. However, these mathematically-derived solutions are devoid of any contextual or theoretical understanding of the problem under study. Therefore, the selection of *k* often becomes more akin to art than a science [@von2012clustering], considering the objective of the study. We begin with two common data-driven approaches that explore multiple clustering solutions for different *k* values and then examines the *within sum of squares* (WSS) and the *average silhouette score* for each solution. The WSS assesses how compact a clustering solution is, or how homogeneous the observations assigned to each cluster are, and the average silhouette score measures how well separated each cluster is from each other. Our objective is to derive a typology of neighborhoods according to their racial and ethnic makeup, for four groups: percent White, Black, Hispanic, and Asian.
 
-```{r kmeans1}
+```{r kmeans1, warning=FALSE, message=FALSE}
 ##Now do the k-means clustering on all
 
 data_for_clustering <- census_long %>%
@@ -188,6 +192,7 @@ data_for_clustering <- census_long %>%
 wss <- function(k) {
   kmeans(data_for_clustering, k, nstart = 10)$tot.withinss
 }
+
 
 # Compute and plot wss for k = 1 to k = 10
 k.values <- 1:10
@@ -203,9 +208,12 @@ fviz_nbclust(data_for_clustering, kmeans, method = "silhouette")
 
 ```
 
-  According to these plots, the optimal number of neighborhood clusters for racial makeup is three. 
-  
-```{r threeclusters}
+
+#### Exploring *k*-means Cluster Solutions
+
+  According to these plots, the mathematically optimal number of neighborhood clusters for racial makeup is three. We can further explore the makeup of neighborhoods within these three clusters a few ways to determine if, in fact, three clusters provides a meaningful segmentation of four distinct racial and ethnic groups. In the plots below, we can visualize the average silhouette value for each cluster. The Silhouette values range from -1 to 1; values close to 1 suggest that the observations are well clustered while negative values are indicative that an observation might be assigned to the wrong cluster. From the plot, Clusters 2 and 3 appears to be the most cohesive cluster, with average silhouette widths of 0.64 while cluster 1 has some potential poorly classified neighborhoods. Descriptions of the racial and ethnic makeup of the clusters are obtained from the Table should the Cluster Profiles and associated stacked bar charts. We can see that Cluster 1 is characterized as being nearly 50 percent Hispanic, with near equal shares of Whites, Blacks, and Asians. Cluster 2 is majority Black with approximately 15 percent Hispanics and few Whites and Asians. Finally, Cluster 3 is majority White. Therefore, this segmentation provides us with clusters indicating the dominant racial groups, but may miss some nuances of other racial and ethnic neighborhood compositions. We can therefore explore how these distributions may portray a richer portrait of neighborhood demographic profiles by increasing the number of clusters. 
+
+```{r threeclusters, warning=FALSE, message=FALSE}
 # Assume the optimal number of clusters (k) is 3 from the previous steps
 set.seed(123)
 kmeans_result <- kmeans(data_for_clustering, centers = 3, nstart = 25)
@@ -214,34 +222,242 @@ kmeans_result <- kmeans(data_for_clustering, centers = 3, nstart = 25)
 census_long$cluster <- kmeans_result$cluster
 
 
-# Visualize clusters using PCA for dimensionality reduction
-fviz_cluster(kmeans_result, data = data_for_clustering, geom = "point",
-             choose.vars = c("white", "black"),
-             ellipse.type = "norm", show.clust.cent = TRUE,
-             palette = "jco", ggtheme = theme_minimal())
-
-
-fviz_cluster(kmeans_result, data = data_for_clustering, geom = "point",
-             choose.vars = c("asian", "hisp"),
-             ellipse.type = "norm", show.clust.cent = TRUE,
-             palette = "jco", ggtheme = theme_minimal())
-
-
 # Silhouette Analysis
 sil <- silhouette(kmeans_result$cluster, dist(data_for_clustering))
 fviz_silhouette(sil)
 
-# Average silhouette width
-mean(sil[, "sil_width"])
+# Extract silhouette information into a data frame
+sil_df <- as.data.frame(sil[, 1:3])
+colnames(sil_df) <- c("Cluster", "Silhouette Width", "Neighboring Cluster")
+
 
 # Cluster profiles
 cluster_profiles <- census_long %>%
   group_by(cluster) %>%
-  summarise(across(c(white, black, hisp, asian), mean))
+  summarise(across(c(white, black, hisp, asian), ~ round(mean(.), 2)))
 
-print(cluster_profiles)
+
+# Print the table as a formatted table
+kable(cluster_profiles, caption = "Cluster Profiles: Average Demographics", 
+      col.names = c("Cluster", "White", "Black", "Hispanic", "Asian"),
+      format = "markdown")
+
+# Step 1: Reshape the data from wide to long format
+cluster_profiles_long <- cluster_profiles %>%
+  pivot_longer(cols = c("white", "black", "hisp", "asian"), 
+               names_to = "Demographic", values_to = "Proportion")
+
+# Step 2: Create the stacked bar chart
+ggplot(cluster_profiles_long, aes(x = factor(cluster), y = Proportion, fill = Demographic)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Cluster Demographic Makeup - 3 clusters", x = "Cluster", y = "Proportion") +
+  scale_fill_brewer(palette = "Set3") +  # Adjust color palette if desired
+  theme_minimal()
+
+
 ```
 
+  Here, we compare 4,5,and 6 cluster solutions. We can see that the average silhouette of the solutions declines as the number of clusters increases. The demographic profiles show several new neighborhood typologies emerge with more clusters added. With a four cluster solution, we observe neighborhood typologies for each of the three dominant racial and ethic groups: White, Hispanic, and Black along with one mixed neighborhood type, shown in cluster 4. As expected, that cluster displays the lowest silhouette value, with some potentially mis-classified neighborhoods. The 5 cluster solution adds a cluster showing a majority Asian population, alongside two majority White populations - one showing more diversity than the other), and a majority Black, and Hispanic group. Finally, a 6 cluster solution shows more racially mixed groups, but at the expense of less well-defined or separated clusters. 
+ 
+  
+```{r exploreclusters, warning=FALSE, message=FALSE}
+# Perform k-means clustering for 4, 5, and 6 clusters
+set.seed(123)
+kmeans_4 <- kmeans(data_for_clustering, centers = 4, nstart = 25)
+kmeans_5 <- kmeans(data_for_clustering, centers = 5, nstart = 25)
+kmeans_6 <- kmeans(data_for_clustering, centers = 6, nstart = 25)
+
+# Add cluster assignment to original data
+census_long$cluster_4 <- kmeans_4$cluster
+census_long$cluster_5 <- kmeans_5$cluster
+census_long$cluster_6 <- kmeans_6$cluster
+
+# Silhouette analysis for 4, 5, and 6 clusters
+sil_4 <- silhouette(kmeans_4$cluster, dist(data_for_clustering))
+sil_5 <- silhouette(kmeans_5$cluster, dist(data_for_clustering))
+sil_6 <- silhouette(kmeans_6$cluster, dist(data_for_clustering))
+
+# Plot silhouette for 4 clusters
+plot_4 <- fviz_silhouette(sil_4) + ggtitle("Silhouette Plot - Four Clusters")
+
+# Plot silhouette for 5 clusters
+plot_5 <- fviz_silhouette(sil_5) + ggtitle("Silhouette Plot - Five Clusters")
+
+# Plot silhouette for 6 clusters
+plot_6 <- fviz_silhouette(sil_6) + ggtitle("Silhouette Plot - Six Clusters")
+
+# Combine the three plots into a faceted view
+grid.arrange(plot_4, plot_5, plot_6, ncol = 1)
+
+
+# Cluster profiles for 4, 5, and 6 clusters
+cluster_profiles_4 <- census_long %>%
+  group_by(cluster_4) %>%
+  summarise(across(c(white, black, hisp, asian), ~ round(mean(.), 2))) %>%
+  mutate(clusters = "4")
+
+cluster_profiles_5 <- census_long %>%
+  group_by(cluster_5) %>%
+  summarise(across(c(white, black, hisp, asian), ~ round(mean(.), 2))) %>%
+  mutate(clusters = "5")
+
+cluster_profiles_6 <- census_long %>%
+  group_by(cluster_6) %>%
+  summarise(across(c(white, black, hisp, asian), ~ round(mean(.), 2))) %>%
+  mutate(clusters = "6")
+
+# Combine cluster profiles into one table
+cluster_profiles_combined <- bind_rows(cluster_profiles_4, cluster_profiles_5, cluster_profiles_6)
+
+
+# Reshape data for the stacked bar chart
+cluster_profiles_long_combined <- cluster_profiles_combined %>%
+  pivot_longer(cols = c("white", "black", "hisp", "asian"), 
+               names_to = "Demographic", values_to = "Proportion")
+
+
+
+# Remove rows with NA cluster assignments (from clusters 4, 5, and 6)
+cluster_profiles_long_combined <- cluster_profiles_combined %>%
+  pivot_longer(cols = c("cluster_4", "cluster_5", "cluster_6"),
+               names_to = "Clustering Solution", values_to = "Cluster") %>%
+  filter(!is.na(Cluster)) %>%  # Remove NA rows
+  pivot_longer(cols = c("white", "black", "hisp", "asian"),
+               names_to = "Demographic", values_to = "Proportion")
+
+
+
+# Plot with corrected cluster assignments
+ggplot(cluster_profiles_long_combined, aes(x = factor(Cluster), y = Proportion, fill = Demographic)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~ `Clustering Solution`, ncol = 1) +  # Facet by clustering solution (4, 5, 6 clusters)
+  labs(title = "Cluster Demographic Makeup for 4, 5, and 6 Clusters", 
+       x = "Cluster", y = "Proportion") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_minimal()
+
+
+
+```
+  
+  
+To coarsely summarize the distinction between the resulting clusters: 
+  
+  
+  **Four Cluster Solution**
+  
+  1. Majority Black
+  
+  2. Mixed Race
+  
+  3. Majority White
+  
+  4. Majority Hispanic
+  
+  **Five Cluster Solution**
+  
+  1. Majority Hispanic
+  
+  2. Majority White
+  
+  3. Majority Asian
+  
+  4. Majority Black
+  
+  5. White. Mixed-Race
+  
+  **Six Cluster Solution**
+  
+  1. White, Mixed-Race
+  
+  2. Black & Hispanic
+  
+  3. Majority Asian
+  
+  4. Majority Hispanic
+  
+  5. Majority Black
+  
+  6. Majority White
+
+  We can explore how this plays out for a specific observation. For example, take the first census tract in the data frame for the year `2020`. We can see that the racial composition was `58%` Black and `30%` Hispanic with small shares of Whites and Asians. With the four cluster solution, this tract was classified into class 1, `Majority Black`. For the five cluster solution, it was also classified as `Majority Black`, and for the six cluster solution, `Black and Hispanic`. In 1990, that same tract was `34%` black and `61%` Hispanic, resulting in the tract being classified as `Majority Hispanic` by all three clustering solutions. When looking at change over time, the neighborhood will either be registered as transitioning from `Majority Hispanic` to either `Majority Black` or `Black and Hispanic`, depending on the final cluster solution. In this instance, the 6 cluster solution provides a more accurate portrayal of the dynamics - while the neighborhood did technically become majority Black, there is still a significant Hispanic presence, a detail that would have been omitted by limiting the number of groups.
+  
+  Finally, we can examine the spatial distribution of these clustering solutions to help aid in the final determination for the sequence analysis. Since we did the cluster analysis on all decades, for this purpose, we will contrast the 4, 5, and 6 cluster solutions just for 2020. All three maps depict a similar spatial pattern, but with a more fragmented pattern in the case of the 6 cluster solution. 
+  To better understand details on racial neighborhood transitions, we will go with the larger number of clusters, 6, despite the mathematical preference for a 3 cluster solution.
+  
+```{r mappingclusters}
+# Filter data for the year 2020
+tract_clusters_2020 <- tract %>%
+  left_join(census_long %>%
+              filter(year == 2020) %>%  # Filter for the year 2020
+              select(TRTID10, cluster_4, cluster_5, cluster_6), by = "TRTID10") %>%
+  pivot_longer(cols = c("cluster_4", "cluster_5", "cluster_6"),
+               names_to = "ClusterSolution", values_to = "Cluster") %>%
+  filter(!is.na(Cluster))  # Remove NA values
+
+# Set the levels for the ClusterSolution to ensure the correct facet order
+tract_clusters_2020 <- tract_clusters_2020 %>%
+  mutate(ClusterSolution = recode(ClusterSolution,
+                                  "cluster_4" = "Four Clusters",
+                                  "cluster_5" = "Five Clusters",
+                                  "cluster_6" = "Six Clusters")) %>%
+    mutate(ClusterSolution = factor(ClusterSolution, levels = c("Four Clusters", "Five Clusters", "Six Clusters")))
+
+# Plot the faceted maps for 2020 clusters
+ggplot(tract_clusters_2020) +
+  geom_sf(aes(fill = factor(Cluster)), color = NA) +  # Use factor to ensure proper color assignment
+  facet_wrap(~ ClusterSolution, ncol = 3) +  # Facet by clustering solution (Four, Five, Six Clusters)
+  scale_fill_brewer(palette = "Set3", name = "Cluster") +  # Same color palette as used in the bar graphs
+  labs(title = "Cluster Solutions for 4, 5, and 6 Clusters (2020)", x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal",
+        legend.title = element_text(size=10),
+        legend.key.width = unit(2, "cm"))
+
+
+```
+  
+
+  We can begin with a simple exploration of the spatial changes over time in the maps showing the six clusters from 1980-2020 in a series of small multiples. From these maps, we can pick out some general spatial patterns over time. For example, we can see the expanse of neighborhoods classified as majority White from 1980 significantly diminishes by 2020. The share of Hispanics is shown to increase over time in the northern sections of the City. Towards the East, we see neighborhoods generally transition from predominantly White in 1980 to White and Mixed Race and eventually to Asian by 2020. 
+  There are also some evident stable clusters. For instance, the two clusters of predominantly black neighborhoods in the South and Southeast appear quite table over time. However, the cluster of majority Black neighborhoods in towards the north of Manhattan nearly dissapears, replaced by a Black and Hispanic classification.  
+  
+  
+```{r smallmultiples}
+
+decades <- c(1980, 1990, 2000, 2010, 2020)
+
+
+# Filter and prepare data for mapping
+tract_clusters_decades <- tract %>%
+  left_join(census_long %>%
+              select(TRTID10, year, cluster_6), by = "TRTID10") %>%
+  filter(!is.na(cluster_6))  %>%
+  mutate(cluster_6 = recode(cluster_6,
+                            `1` = "White, Mixed-Race",
+                            `2` = "Black & Hispanic",
+                            `3` = "Asian",
+                            `4` = "Hispanic",
+                            `5` = "Black",
+                            `6` = "White"))
+
+# Set factor levels for year to ensure proper ordering
+tract_clusters_decades <- tract_clusters_decades %>%
+  mutate(year = factor(year, levels = decades))
+
+# Plot faceted maps for each decade (year)
+ggplot(tract_clusters_decades) +
+  geom_sf(aes(fill = factor(cluster_6)), color = NA) +  # Use factor to ensure proper color assignment
+  facet_wrap(~ year, ncol = 5) +  # Facet by year with 2 columns for better layout
+  scale_fill_brewer(palette = "Set3", name = "Cluster") +  # Same color palette as before
+  labs(title = "6-Cluster Solution for Each Decade", x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "bottom",  # Move legend to bottom
+        legend.direction = "horizontal",  # Make the legend horizontal
+        legend.title = element_text(size = 10),  # Adjust legend title size if needed
+        legend.key.width = unit(2, "cm"))  # Adjust legend width for readability
+
+```
 
 
 #### Sources.
