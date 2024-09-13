@@ -54,17 +54,20 @@ library(tidycensus) #for reading in census tract data (shapefile)
 library(knitr) #for data table formatting
 # install.packages("gridExtra") # Install package if you have never used it before
 library(gridExtra) #for facet plots
+# install.packages("RColorBrewer") # Install package if you have never used it before
+library(RColorBrewer) #for setting color palettes
 ```
 
 ### Data
-  We use decennial census tract data to examine neighborhood racial and ethnic changes. Census tracts serve as imperfect, yet well-used neighborhood proxies. Census tract boundaries change over time, further complicating the study of population dynamics within these boundaries. There are several sources of data that have been harmonized using interpolation techniques to a consistent set of boundaries over time. We use the Longitudinal Tract Database (LTDB) which uses areal and population interpolation techniques alongside ancillary data on water cover to derive estimates (Logan et al., 2016). Analyses of the errors produced by three popular longitudinal data providers suggest that LTDB performs similarly to the dataset produced by the National Historic Geographic Information System (NHGIS) and both perform better than the Neighborhood Change Database which relies solely on areal interpolation without the inclusion of ancillary data (Logan et al., 2016). Therefore, for this type of analysis either the LTDB or NHGIS would be suitable dataset for this analysis.
+  We use decennial census tract data to examine neighborhood racial and ethnic changes. Census tracts serve as imperfect, yet well-used neighborhood proxies. Census tract boundaries change over time, further complicating the study of population dynamics within these boundaries. There are several sources of data that have been harmonized using interpolation techniques to a consistent set of boundaries over time. We use the Longitudinal Tract Database (LTDB) which uses areal and population interpolation techniques alongside ancillary data on water cover to derive estimates [@logan2014interpolating]. Analyses of the errors produced by three popular longitudinal data providers suggest that LTDB performs similarly to the dataset produced by the National Historic Geographic Information System (NHGIS) and both perform better than the Neighborhood Change Database which relies solely on areal interpolation without the inclusion of ancillary data [@logan2014interpolating]. Therefore, for this type of analysis either the LTDB or NHGIS would be suitable dataset for this analysis.
   
-  We obtained the fullcount decennial data from LTDB from 1980-2020 from the website (https://s4.ad.brown.edu/projects/diversity/Researcher/LTBDDload/DataList.aspx). The census variables have been interpolated to 2010 tract boundaries. Because the coding of census race and ethnicity changes over time, we opted to begin in 1980 as 1970, the earliest dataset available, did not record a count of Latino or Hispanic residents. The raw data contains all census tracts throughout the United States. Finally, we also import a shapefile of 2010 census tracts
+  We obtained the fullcount decennial data from LTDB from 1980-2020 from the website (https://s4.ad.brown.edu/projects/diversity/Researcher/LTBDDload/DataList.aspx). The census variables have been interpolated to 2010 tract boundaries. Because the coding of census race and ethnicity changes over time, we opted to begin in 1980 as 1970, the earliest dataset available, did not record a count of Latino or Hispanic residents. The raw data contains all census tracts throughout the United States. Finally, we also import a shapefile of 2010 census tract boundaries using the `tidycensus` package and setting geometry to `true`.
   
 ### Basic conceptual intuition 
-  Our analysis features two fundamental steps. The first is the *k*-means clustering of the census tracts to derive multidimensional classes of neighborhoods containing similar racial and ethnic compositions. Reibel and Regelson (2011) introduced the idea of using an unsupervised classification approach for studying neighborhood racial change as an alternative to the use of neighborhood diversity indices. The objective of the *k*-means algorithm is to group observations in such a way that maximizes the similarity of observations within groups or clusters while maximizing the dissimilarity between each cluster. In other words, the goal is to group neighborhoods so that those most similar to each other according to their racial and ethnic makeup are assigned to the same cluster and the clusters themselves are distinct from one another in terms of their makeup. With the *k*-means algorithm, the number of clusters, *k* must be determined *a priori*. To make this determination, it is customary to evaluate multiple solutions using various fit statistics in conjunction with domain and geographic knowledge of the data [@delmelle2015five]. It is also reccomended that input variables be normalized for data used in neighborhood classification research to avoid placing unequal emphasis on variables that may be on different measurement scales. However, in our case study, all of the racial and ethnic variables represent percentages of the population and so, this step is not performed in the case study. 
+  Our analysis features two fundamental steps. The first is the *k*-means clustering of the census tracts to derive multidimensional classes of neighborhoods containing similar racial and ethnic compositions. [@reibel2011neighborhood] introduced the idea of using an unsupervised classification approach for studying neighborhood racial change as an alternative to the use of neighborhood diversity indices. The objective of the *k*-means algorithm is to group observations in such a way that maximizes the similarity of observations within groups or clusters while maximizing the dissimilarity between each cluster. In other words, the goal is to group neighborhoods so that those most similar to each other according to their racial and ethnic makeup are assigned to the same cluster and the clusters themselves are distinct from one another in terms of their makeup. With the *k*-means algorithm, the number of clusters, *k* must be determined *a priori*. To make this determination, it is customary to evaluate multiple solutions using various fit statistics in conjunction with domain and geographic knowledge of the data [@delmelle2015five]. It is also recommended that input variables be normalized for data used in neighborhood classification research to avoid placing unequal emphasis on variables that may be on different measurement scales. However, in our case study, all of the racial and ethnic variables represent percentages of the population and so, this step is not performed in the case study. 
   Our ultimate goal is to understand the major pathways of neighborhood change and so each neighborhood will be classified five times for 1980, 1990, 2000, 2010, and 2020 to establish its longitudinal sequence. To ensure that the clusters are temporally stable, we will perform the clustering for all years at once. New neighborhood typologies may emerge over time with this approach. In that case, only tracts from the later years would be assign to the new cluster.
-  Like *k*-means, sequence analysis is an unsupervised classification technique that aims to cluster similar longitudinal sequences. To determine the similarity of the sequences, a key step in this analysis is to create the dissimilarity measure. There are various approaches that can be used to determine the similarity of categorical sequences. 
+  Like *k*-means, sequence analysis is an unsupervised classification technique that aims to cluster similar longitudinal sequences. To determine the similarity of the sequences, a key step in this analysis is to create the dissimilarity measure. There are various approaches that can be used to determine the similarity of categorical sequences. [@studer2016matters] provides a comprehensive overview of various techniques for determining sequences dissimilarity for social science applications. In this case study, we are most interested in the *ordering* or *sequencing* of neighborhood cross-sectional racial groups. Each neighborhood will have the same number of states, captured at the same decennial interval, which differs from studies of individuals progressing through a series of life course events, for example. In those cases, other considerations like the duration of time spent in each state or the timing of certain events may matter more in ultimately grouping the sequences based on similarity. However, in this case, we aim to create clusters of sequences that follow a similar ordering of events - progressing from example, a Majority White neighborhood through a Mixed Race state towards a Majority Hispanic state. The amount of time spent in each of these states might differ, but ultimately this describes *how* a neighborhood has changed over time. Given this, we follow [@delmelle2017differentiating] and use a variation on the popular Optimal Matching (OM) algorithm called OMstrans. The OM algorithm is a string editing technique that determines the cost it would take to completely transform one sequence into another. This is achieved by either inserting, deleting, or substituting elements in one sequence until it matches another. For example, one neighborhood may have a sequence of *White*, *White*, *Mixed Race*, *Hispanic* while another neighborhood might follow the sequence *White*, *White*, *Mixed Race*, *Mixed Race*. Between these two strings, there is one entry that differs: the final state. To transform one to another, we could substitute *Hispanic* for *Mixed Race* in the second sequence. In the OMstrans variant, distances between sequences of transitions are computed. This means that each state is merged with its previous state to create a subsequence. In the previous illustrative example, the first sequence becomes (*White-White*, *White-MixedRace*, *MixedRace-Hispanic*) and the OM cost evaluation is then applied to these subsequences. This helps to ensure that the ordering of events is preserved in the sequence clusters. The importance given to the preservation of ordering is governed by the parameter *w*, the origin-transition parameter. When *w* = 1, OMstrans approximates the traditional OM algorithm. A lower value places greater emphasis on the ordering or sequencing of events.
+  
 
 ```{r importdata, warning=FALSE, cache = TRUE, message=FALSE}
 here ()
@@ -402,12 +405,14 @@ tract_clusters_2020 <- tract_clusters_2020 %>%
                                   "cluster_5" = "Five Clusters",
                                   "cluster_6" = "Six Clusters")) %>%
     mutate(ClusterSolution = factor(ClusterSolution, levels = c("Four Clusters", "Five Clusters", "Six Clusters")))
+#set consistent color palette to also be used in the sequence clutering
+pal <- c("#8DD3C7", "#FFFFB3", "#BEBADA","#FB8072", "#80B1D3","#FDB462")
 
 # Plot the faceted maps for 2020 clusters
 ggplot(tract_clusters_2020) +
   geom_sf(aes(fill = factor(Cluster)), color = NA) +  # Use factor to ensure proper color assignment
   facet_wrap(~ ClusterSolution, ncol = 3) +  # Facet by clustering solution (Four, Five, Six Clusters)
-  scale_fill_brewer(palette = "Set3", name = "Cluster") +  # Same color palette as used in the bar graphs
+  scale_fill_manual(values = pal, name = "Cluster") +  
   labs(title = "Cluster Solutions for 4, 5, and 6 Clusters (2020)", x = "", y = "") +
   theme_void() +
   theme(legend.position = "bottom",
@@ -420,7 +425,7 @@ ggplot(tract_clusters_2020) +
   
 
   We can begin with a simple exploration of the spatial changes over time in the maps showing the six clusters from 1980-2020 in a series of small multiples. From these maps, we can pick out some general spatial patterns over time. For example, we can see the expanse of neighborhoods classified as majority White from 1980 significantly diminishes by 2020. The share of Hispanics is shown to increase over time in the northern sections of the City. Towards the East, we see neighborhoods generally transition from predominantly White in 1980 to White and Mixed Race and eventually to Asian by 2020. 
-  There are also some evident stable clusters. For instance, the two clusters of predominantly black neighborhoods in the South and Southeast appear quite table over time. However, the cluster of majority Black neighborhoods in towards the north of Manhattan nearly dissapears, replaced by a Black and Hispanic classification.  
+  There are also some evident stable clusters. For instance, the two clusters of predominantly black neighborhoods in the South and Southeast appear quite table over time. However, the cluster of majority Black neighborhoods in towards the north of Manhattan nearly disssapears, replaced by a Black and Hispanic classification.  
   
   
 ```{r smallmultiples}
@@ -434,7 +439,7 @@ tract_clusters_decades <- tract %>%
               select(TRTID10, year, cluster_6), by = "TRTID10") %>%
   filter(!is.na(cluster_6))  %>%
   mutate(cluster_6 = recode(cluster_6,
-                            `1` = "White, Mixed-Race",
+                            `1` = "White Mixed Race",
                             `2` = "Black & Hispanic",
                             `3` = "Asian",
                             `4` = "Hispanic",
@@ -449,7 +454,7 @@ tract_clusters_decades <- tract_clusters_decades %>%
 ggplot(tract_clusters_decades) +
   geom_sf(aes(fill = factor(cluster_6)), color = NA) +  # Use factor to ensure proper color assignment
   facet_wrap(~ year, ncol = 5) +  # Facet by year with 2 columns for better layout
-  scale_fill_brewer(palette = "Set3", name = "Cluster") +  # Same color palette as before
+  scale_fill_manual(values = pal, name = "Cluster") +  # Same color palette as before
   labs(title = "6-Cluster Solution for Each Decade", x = "", y = "") +
   theme_void() +
   theme(legend.position = "bottom",  # Move legend to bottom
@@ -458,6 +463,86 @@ ggplot(tract_clusters_decades) +
         legend.key.width = unit(2, "cm"))  # Adjust legend width for readability
 
 ```
+
+  Our objective with the sequence classification is to come up with a typology of neighborhood sequences over time to describe general pathways of change. Each neighborhood has a sequence of classes over time, one for each of the five decennial census values from 1980-2020. The first step in the analysis is to convert the data frame into a sequence for each neighborhood. We can see an illustrative example of the longitudinal sequences from the first five records. Classes are separated by a dash (-). There are 2122 sequences in the dataset and 197 unique sequences; all sequences are displayed in the plot below.
+  
+```{r createsequences, warning=FALSE, message=FALSE}
+#Now convert to wide format so we have a sequence for each neighborhood
+# Assuming census_long is your data frame
+# Convert the data from long to wide format
+census_wide <- tract_clusters_decades %>%st_drop_geometry%>%
+  select(TRTID10, year, cluster_6) %>%
+  pivot_wider(names_from = year, values_from = cluster_6, names_prefix = "cluster_")
+
+census_wide <- census_wide %>%
+  select(TRTID10, cluster_1980, cluster_1990, cluster_2000, cluster_2010, cluster_2020)
+
+# Ensure the sequence columns are factors
+census_wide <- census_wide %>%
+  mutate(across(starts_with("cluster_"), as.factor))
+
+# Define the sequences
+sequence_data <- seqdef(census_wide[, -1], cpal = pal)  # Exclude the TRTID10 column
+
+# number of distinct sequences
+seqtab(sequence_data, idx=0) %>% nrow
+
+head(sequence_data)
+
+seqIplot(sequence_data,                                             # Sequence object
+         with.legend = "right",                                # Display legend on right side of plot
+         cex.legend = 0.6,                                     # Change size of legend
+         main = "Neighborhood Racial and Ethnic Trajectories") # Plot title
+
+
+```
+  
+  The next objective is to compute the dissimilarity between all sequences. As described previously, we use the OMstrans algorithm to preserve the ordering of events as we are most interested in describing how neighborhoods have generally transitioned over time. We set a low value (`0.1`) for the parameter `otto` in the `seqdist` command which is the origin-transition trade-off weight. This emphasizes the ordering of sequence states. We also set a high `indel` cost of `3`. Finally, substitution costs are a function of the transition rate `TRATE` between states. This places a lower cost on more frequent transitions. 
+  Once the cost matrix is established, we then cluster the sequences using the dissimilarity matrix as an input to generate the typology. We follow an iterative process in determining the optimal solution like the one described above for the *k* means clustering. In short, multiple solutions are tested and the resulting sequence clusters are visualized to inspect for heterogeneity. Because our clustering and distance matrix are optimized for describing transitions over time, we end up with one cluster that contains all neighborhoods that remained constant over time. These sequences are very different from one another, but they all represent no change. When we get to the mapping stage, we will separate out each of these distinct cases to identify sequences of remaining in each of the six neighborhood categories. 
+
+```{r clustersequences}
+
+# Compute the OM distances
+costs <- seqcost(sequence_data, method = "TRATE")
+om_distances <- seqdist(sequence_data, method = "OMstran", indel = 3, sm = costs$sm, otto = 0.1)
+
+clusterward <- agnes(om_distances, diss = TRUE, method = "ward")
+
+# Adjust the plotting parameters
+#op <- par(mar = c(5, 5, 4, 2) + 0.1)  # Adjust margins as needed
+
+# Choose the number of clusters (e.g., 4)
+num_clusters <- 12
+clusters <- cutree(clusterward , k = num_clusters)
+
+# Add the cluster assignments to the original data
+census_wide$sequence_cluster <- clusters
+
+#png("sequences.png", width = 600, height = 900)
+
+# Plot the sequences for each cluster. to make things fit, lets do five at a time
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 1:5, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 1:5], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = TRUE, 
+         main = "Sequence Frequency Plot")
+
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 6:10, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 6:10], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = TRUE, 
+         main = "Sequence Frequency Plot")
+
+
+
+```
+
 
 
 #### Sources.
