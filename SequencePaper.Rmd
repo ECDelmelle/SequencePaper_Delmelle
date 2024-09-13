@@ -499,8 +499,11 @@ seqIplot(sequence_data,                                             # Sequence o
   
   The next objective is to compute the dissimilarity between all sequences. As described previously, we use the OMstrans algorithm to preserve the ordering of events as we are most interested in describing how neighborhoods have generally transitioned over time. We set a low value (`0.1`) for the parameter `otto` in the `seqdist` command which is the origin-transition trade-off weight. This emphasizes the ordering of sequence states. We also set a high `indel` cost of `3`. Finally, substitution costs are a function of the transition rate `TRATE` between states. This places a lower cost on more frequent transitions. 
   Once the cost matrix is established, we then cluster the sequences using the dissimilarity matrix as an input to generate the typology. We follow an iterative process in determining the optimal solution like the one described above for the *k* means clustering. In short, multiple solutions are tested and the resulting sequence clusters are visualized to inspect for heterogeneity. Because our clustering and distance matrix are optimized for describing transitions over time, we end up with one cluster that contains all neighborhoods that remained constant over time. These sequences are very different from one another, but they all represent no change. When we get to the mapping stage, we will separate out each of these distinct cases to identify sequences of remaining in each of the six neighborhood categories. 
+  To describe the resulting sequence clusters, we plot a Sequence Frequency Plot for each cluster. We settled on 14  trajectory clusters describing neighborhood racial and ethnic transitions from 1980 to 2020 in New York City. The Sequence Frequency Plots illustrate the sequences belonging to each cluster and the sequence bars are scaled to visualize the frequence of each sequence. A summary of the trajectories is as follows:
+  
+  1. Hispanic Majority 
 
-```{r clustersequences}
+```{r clustersequences, message = FALSE}
 
 # Compute the OM distances
 costs <- seqcost(sequence_data, method = "TRATE")
@@ -512,33 +515,77 @@ clusterward <- agnes(om_distances, diss = TRUE, method = "ward")
 #op <- par(mar = c(5, 5, 4, 2) + 0.1)  # Adjust margins as needed
 
 # Choose the number of clusters (e.g., 4)
-num_clusters <- 12
+num_clusters <- 14
 clusters <- cutree(clusterward , k = num_clusters)
 
 # Add the cluster assignments to the original data
 census_wide$sequence_cluster <- clusters
 
-#png("sequences.png", width = 600, height = 900)
 
 # Plot the sequences for each cluster. to make things fit, lets do five at a time
 
 # Plot only for clusters 1 to 5 using simple indexing
-seqfplot(sequence_data[census_wide$sequence_cluster %in% 1:5, ], 
-         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 1:5], 
+cluster_names1 <- c("1 Black & Hispanic to Hispanic Majority", 
+                   "2 Stablility", 
+                   "3 White Mixed Race to Hispanic", 
+                   "4 White to Mixed Race to Hispanic Majority", 
+                   "5 Majority White to Increasing Diversity")
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 1:2, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 1:2], 
          sortv = "from.start", 
          border = NA, 
-         with.legend = TRUE, 
+         with.legend = FALSE)
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 3:4, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 3:4], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = FALSE, 
+         main = "Sequence Frequency Plot")
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 5:6, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 5:6], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = FALSE, 
+         main = "Sequence Frequency Plot")
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 7:8, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 7:8], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = FALSE, 
          main = "Sequence Frequency Plot")
 
 
 # Plot only for clusters 1 to 5 using simple indexing
-seqfplot(sequence_data[census_wide$sequence_cluster %in% 6:10, ], 
-         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 6:10], 
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 9:10, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 9:10], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = FALSE, 
+         main = "Sequence Frequency Plot")
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 11:12, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 11:12], 
+         sortv = "from.start", 
+         border = NA, 
+         with.legend = FALSE, 
+         main = "Sequence Frequency Plot")
+
+# Plot only for clusters 1 to 5 using simple indexing
+seqfplot(sequence_data[census_wide$sequence_cluster %in% 13:14, ], 
+         group = census_wide$sequence_cluster[census_wide$sequence_cluster %in% 13:14], 
          sortv = "from.start", 
          border = NA, 
          with.legend = TRUE, 
          main = "Sequence Frequency Plot")
-
 
 
 ```
