@@ -509,14 +509,14 @@ seqIplot(sequence_data,                                             # Sequence o
   6. White Majority to White and Mixed Race
   7. White and Mixed Race to Black and Hispanic
   8. Black and Hispanic to Black Majority
-  9. White and Mixed Race to White Majority
-  10. White and Mixed Race to Asian Majority
+  9. White and Mixed Race to Asian Majority
+  10.  White and Mixed Race to White Majority
   11. Black and Hispanic to White and Mixed Race 
   12. White and Mixed Race to Asian Majority
   13. Black Majority to Black and Hispanic
   14. Black and Hispanic to Asian Majority
   
-  As expected, most of the pathways of change exhibit some diversification, though we do see the formation of Hispanic and Asian Majority tracts over time time frame. Only one pathway led to the formation of majority Black residents (Cluster 8) and this represents a very small share of tracts in the city (3%). The was no pathway to the overwhelming majority White neighborhood type that was common at the beginning of the study period. One trajectory showed a transition from 
+
   
 
 ```{r clustersequences, message = FALSE}
@@ -599,6 +599,130 @@ seqfplot(sequence_data[census_wide$sequence_cluster %in% 13:14, ],
 
 ```
 
+    Of these 14 pathways, there are 3 that lead to the formation of a neighborhood transitioning into a Hispanic Majority cluster by 2020. This includes Cluster 3 - showing neighborhoods that went from being a slight majority White, but with a mixture of other races in 1980 and 1990 to transitioning to majority Hispanic by 1990 or 2000. Some of these sequences indicate a continued transition towards becoming majority Asian in the later years. Further segmenting the sequences into more clusters may have separated out those trajectories, but for the sake of brevity, we leave them mixed in. Spatially, these are shown in Orange on the map below and can be see clustered in Staten Island, Queens, and in the Northern portion of the city. They are also notably adjacent to neighborhoods indicated by the red color, those representing sequence cluster 4, transitioning from majority White to White and Mixed Race and then to Majority Hispanic. This latter cluster might reprent the precursor to cluster 3, but are neighborhoods that made this transition from majority White later, where the changes took time to spatially spillover to adjacent neighborhoods, as indicated by the map. Both of these pathways depict a transition from largely White populations to largely Hispanic.
+    The third pathway depicting a transition to majority Hispanic is distinct. It is represented by cluster 5 showing a transition from either majority Black neighborhoods towards a mixed Hispanic and Black group and eventually majority Hispanic or beginning the 1980 time stamp in a more mixed Black and Hispanic state. Geographically, these neighborhoods are shown more in the northern sections of Manhattan and the Bronx.
+    
+```{r HispanicMajorityMap}
+# Load necessary libraries
+library(ggplot2)
+library(sf)
+library(dplyr)
+
+# Filter census data to include only clusters 4, 5, and 6
+hispanic_majority_clusters <- census_wide %>%
+  filter(sequence_cluster %in% c(4, 5, 6))  # Clusters 4, 5, 6 represent Hispanic Majority pathways
+
+# Join the filtered data with the tract shapefile based on TRTID10
+tract_hispanic_majority <- tract %>%
+  left_join(hispanic_majority_clusters, by = "TRTID10")  # Join with spatial data
+
+# Create a map of the neighborhoods with clusters 4, 5, and 6 with new labels
+ggplot(tract_hispanic_majority) +
+  geom_sf(aes(fill = factor(sequence_cluster)), color = NA) +  # Map sequence clusters
+  scale_fill_manual(values = c("#FB8072", "#80B1D3", "#FDB462"),  # Custom color palette
+                    labels = c("3 White - White, Mixed Race - Hispanic", 
+                               "5 Black - Black & Hispanic - Hispanic", 
+                               "4 White, Mixed Race - Hispanic"), 
+                    name = "Hispanic Majority Pathway") +
+  labs(title = "Neighborhoods Following Pathway to Hispanic Majority", 
+       x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "right",  # Place legend at the bottom
+        legend.direction = "vertical",  # Arrange legend items horizontally
+        legend.title = element_text(size = 12),  # Customize legend title size
+        legend.key.width = unit(2, "cm"),  # Adjust legend key width
+        legend.box = "vertical")  # Place legend title on top of the legend
+
+
+```
+  
+  There are also 3 pathways leading to an Asian majority neighborhood type. These include clusters 9 and 12 which are also likely continuations of longer trajectories showing a gradual transition from Majority White to White mixed race and eventually to Asian Majority. Geographically, these are clustered in the northern section of Queens. Sequence cluster 14 is more distinct in that the Asian majority transitioned from the Black and Hispanic mixed group and spatially, they are generally located in upper Manhattan and the Bronx.
+  
+```{r AsianPathways}
+
+# Filter census data to include only clusters 14, 12, and 9 (Asian Majority Pathway clusters)
+asian_majority_clusters <- census_wide %>%
+  filter(sequence_cluster %in% c(14, 12, 9))  # Clusters 14, 12, and 9 represent Asian Majority pathways
+
+# Join the filtered data with the tract shapefile based on TRTID10
+tract_asian_majority <- tract %>%
+  left_join(asian_majority_clusters, by = "TRTID10")  # Join with spatial data
+
+# Create a map of the neighborhoods with clusters 14, 12, and 9 with new labels
+ggplot(tract_asian_majority) +
+  geom_sf(aes(fill = factor(sequence_cluster)), color = NA) +  # Map sequence clusters
+  scale_fill_manual(values = c("#8DD3C7", "#FFFFB3", "#BEBADA"),  # Custom color palette for Asian Majority clusters
+                    labels = c("14 White, Mixed Race to Black & Hispanic to Asian Majority", 
+                               "12 White Majority to White Mixed Race to Asian", 
+                               "9 White Mixed Race to Asian"), 
+                    name = "Asian Majority Pathway") +
+  labs(title = "Neighborhoods Following Pathway to Asian Majority", 
+       x = "", y = "") +
+  theme_void() +
+  theme(legend.position = "right",  # Place legend at the bottom
+        legend.direction = "vertical",  # Arrange legend items horizontally
+        legend.title = element_text(size = 12),  # Customize legend title size
+        legend.key.width = unit(2, "cm"),  # Adjust legend key width
+        legend.box = "vertical")  # Place legend title on top of the legend
+
+```
+  
+
+  There are two pathways for increasing both Black and White shares in a neighborhoods. Neighborhoods that became increasingly White either followed a trajectory from White mixed race to majority White (Cluster 10) or from either all Black or Black and Hispanic to White and Mixed race (11). Notablly, this transition largely took place within the past 1-2 decades, aligning with when gentrification trends became accentuated in some cities, including New York. We see a clear cluster of this latter group in Brooklyn, a borough whose gentrification trends have been well documented [@chronopoulos2020s; @halasz2023between]. For the case of increasing Black populations, cluster 1 shows a pathway from Hispanic majority to mixed Black and Hispanic and Cluster 8 shows a gradual transition from Black and Hispanic to majority Black; a trend that largely begin towards the middle of the study period, around the 2000 census data mark. Spatially, the former is more dispersed, while the latter is depcited more clearly in the 
+  
+  
+```{r whiteandblack}
+library(patchwork)  # Optional for arranging multiple plots side by side
+
+# Filter data for Increasing White (clusters 10 and 11)
+increasing_white_clusters <- census_wide %>%
+  filter(sequence_cluster %in% c(10, 11))  # Clusters 10 and 11 for increasing White
+
+# Filter data for Increasing Black (clusters 1 and 8)
+increasing_black_clusters <- census_wide %>%
+  filter(sequence_cluster %in% c(1, 8))  # Clusters 1 and 8 for increasing Black
+
+# Join the filtered data with the tract shapefile for each group
+tract_increasing_white <- tract %>%
+  left_join(increasing_white_clusters, by = "TRTID10")  # Join spatial data for increasing White
+
+tract_increasing_black <- tract %>%
+  left_join(increasing_black_clusters, by = "TRTID10")  # Join spatial data for increasing Black
+
+# Create the map for Increasing White
+map_increasing_white <- ggplot(tract_increasing_white) +
+  geom_sf(aes(fill = factor(sequence_cluster)), color = NA) +  # Map sequence clusters
+  scale_fill_manual(values = c("#8DD3C7", "#FFFFB3"),  # Custom color palette for White clusters
+                    labels = c("White Mixed Race to Majority White", 
+                               "Black and Hispanic to White Mixed Race"), 
+                    name = "Increasing White Pathway") +
+  theme_void() +
+  theme(legend.position = "right",  # Place legend at the bottom
+        legend.direction = "vertical",  # Arrange legend items horizontally
+        legend.title = element_text(size = 12),  # Customize legend title size
+        legend.key.width = unit(2, "cm"),
+        legend.box = "vertical")  # Place legend title on top
+
+# Create the map for Increasing Black
+map_increasing_black <- ggplot(tract_increasing_black) +
+  geom_sf(aes(fill = factor(sequence_cluster)), color = NA) +  # Map sequence clusters
+  scale_fill_manual(values = c("#FB8072", "#80B1D3"),  # Custom color palette for Black clusters
+                    labels = c("Hispanic Majority to Black & Hispanic", 
+                               "Black and Hispanic to Black Majority"), 
+                    name = "Increasing Black Pathway") +
+  theme_void() +
+  theme(legend.position = "right",  # Place legend at the bottom
+        legend.direction = "vertical",  # Arrange legend items horizontally
+        legend.title = element_text(size = 12),  # Customize legend title size
+        legend.key.width = unit(2, "cm"),
+        legend.box = "vertical")  # Place legend title on top
+
+# Combine the two maps side by side using patchwork
+combined_map <- map_increasing_white + map_increasing_black + plot_layout(ncol = 2)
+
+# Print the combined map
+print(combined_map)
+```
 
 
 #### Sources.
