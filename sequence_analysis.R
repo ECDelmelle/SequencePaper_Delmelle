@@ -209,6 +209,47 @@ pairs_plot_data <- census_long %>%
 pairs(pairs_plot_data, col = pairs_plot_data$cluster,
       main = "Pairwise Scatter Plots of Demographic Variables by Cluster")
 
+
+# Assume the optimal number of clusters (k) is 5 from the previous steps
+set.seed(123)
+kmeans_result <- kmeans(data_for_clustering, centers = 5, nstart = 25)
+
+# Add the cluster assignments to the original data
+census_long$cluster <- kmeans_result$cluster
+
+
+# Silhouette Analysis
+sil <- silhouette(kmeans_result$cluster, dist(data_for_clustering))
+fviz_silhouette(sil)
+
+# Extract silhouette information into a data frame
+sil_df <- as.data.frame(sil[, 1:3])
+colnames(sil_df) <- c("Cluster", "Silhouette Width", "Neighboring Cluster")
+
+
+# Cluster profiles
+cluster_profiles <- census_long %>%
+  group_by(cluster) %>%
+  summarise(across(c(white, black, hisp, asian), ~ round(mean(.), 2)))
+
+
+# Print the table as a formatted table
+kable(cluster_profiles, caption = "Cluster Profiles: Average Demographics", 
+      col.names = c("Cluster", "White", "Black", "Hispanic", "Asian"),
+      format = "markdown")
+
+# Step 1: Reshape the data from wide to long format
+cluster_profiles_long <- cluster_profiles %>%
+  pivot_longer(cols = c("white", "black", "hisp", "asian"), 
+               names_to = "Demographic", values_to = "Proportion")
+
+# Step 2: Create the stacked bar chart
+ggplot(cluster_profiles_long, aes(x = factor(cluster), y = Proportion, fill = Demographic)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Cluster Demographic Makeup - 6 clusters", x = "Cluster", y = "Proportion") +
+  scale_fill_brewer(palette = "Set3") +  # Adjust color palette if desired
+  theme_minimal()
+
 # Create heatmap table of average values for each cluster
 
 # Calculate the average values for each cluster
@@ -256,7 +297,7 @@ cluster_labels <- c(
 rownames(cluster_matrix) <- cluster_labels
 names(cluster_labels) <- 1:6
 
-#Now convert to wide format so we have a sequnce for each neighborhood
+#Now convert to wide format so we have a sequence for each neighborhood
 # Assuming census_long is your data frame
 # Convert the data from long to wide format
 census_wide <- census_long %>%
@@ -298,4 +339,34 @@ png("sequences.png", width = 600, height = 900)
 # Plot the sequences for each cluster
 seqIplot(sequence_data, group = census_wide$sequence_cluster, sortv = "from.start")
 dev.off()
+
+
+
+
+# Define custom cluster names
+cluster_names <- c("White Mixed-Race to White Transition", 
+                   "Stable Hispanic Majority", 
+                   "White to Hispanic Transition", 
+                   "Stable Black Majority", 
+                   "Black & Hispanic with Increasing Asian Presence")
+
+# Filter the data to include only sequences from the first 5 clusters and remove NAs
+subset_data <- census_wide %>%
+  filter(sequence_cluster %in% 1:5) %>%
+  filter(!is.na(sequence_cluster))  # Remove rows with NA cluster assignment
+
+# Get the sequence data for the subset of TRTID10s, handling NA values in sequence data
+subset_seq_data <- sequence_data[which(!is.na(subset_data$TRTID10)), ]
+
+# Loop over the first 5 clusters and plot them individually with titles
+par(mfrow = c(2, 3))  # Set up the plotting window to display 5 plots in 2 rows and 3 columns
+
+for (i in 1:5) {
+  # Plot each cluster's sequences, ensuring rows with NAs are handled correctly
+  seqfplot(subset_seq_data[subset_data$sequence_cluster == i, ], 
+           sortv = "from.start", 
+           border = NA, 
+           with.legend = TRUE, 
+           main = paste("Sequence Frequency Plot -", cluster_names[i]))
+}
 

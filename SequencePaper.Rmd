@@ -85,7 +85,8 @@ tract <- get_decennial(geography = "tract",
                        year = 2010,
                        state = "NY",
                        county = nyc_counties,
-                       geometry = TRUE)
+                       geometry = TRUE,
+                       progress = FALSE)
 ```
 
 ```{r importdata_noeval, warning=FALSE, message=FALSE,cache = TRUE, eval = FALSE}

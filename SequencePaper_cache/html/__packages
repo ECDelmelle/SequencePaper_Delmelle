@@ -15,3 +15,6 @@ purrr
 stringr
 forcats
 lubridate
+knitr
+gridExtra
+RColorBrewer
